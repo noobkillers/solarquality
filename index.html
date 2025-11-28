@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPQMS - Solar Quality Management System</title>
+    <title>SPQMS - Solar Quality Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -29,60 +28,40 @@
     </script>
 
     <style>
-        .modal { transition: all 0.3s; }
         .hidden { display: none !important; }
-        .nav-link.active { background-color: #e0f2fe; color: #0284c7; font-weight: 600; }
-        .nav-link.active svg { color: #0284c7; }
+        .modal { transition: all 0.3s; }
+        .nav-link.active { background: #dbeafe; color: #1d4ed8; font-weight: 600; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-100">
 
 <div class="flex h-screen">
     <!-- Sidebar -->
-    <aside class="w-64 bg-white shadow-lg">
+    <aside class="w-64 bg-white shadow-xl">
         <div class="p-6 text-center border-b">
-            <h1 class="text-2xl font-bold text-gray-800">SPQMS</h1>
+            <h1 class="text-2xl font-bold text-blue-700">SPQMS</h1>
         </div>
         <nav class="mt-6">
-            <a href="#dashboard" onclick="navigate('dashboard')" class="nav-link flex items-center px-6 py-4 text-gray-700 hover:bg-gray-50 cursor-pointer">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1V10a1 1 0 00-1-1H7a1 1 0 00-1 1v10a1 1 0 001 1h2z"></path></svg>
-                Dashboard
-            </a>
-            <a href="#sites" onclick="navigate('sites')" class="nav-link flex items-center px-6 py-4 text-gray-700 hover:bg-gray-50 cursor-pointer">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Site Management
-            </a>
-            <a href="#observations" onclick="navigate('observations')" class="nav-link flex items-center px-6 py-4 text-gray-700 hover:bg-gray-50 cursor-pointer">
-                Observations
-            </a>
-            <a href="#ncrs" onclick="navigate('ncrs')" class="nav-link flex items-center px-6 py-4 text-gray-700 hover:bg-gray-50 cursor-pointer">
-                NCR & RCA
-            </a>
-            <a href="#capa" onclick="navigate('capa')" class="nav-link flex items-center px-6 py-4 text-gray-700 hover:bg-gray-50 cursor-pointer">
-                CAPA
-            </a>
-            <a href="#incidents" onclick="navigate('incidents')" class="nav-link flex items-center px-6 py-4 text-gray-700 hover:bg-gray-50 cursor-pointer">
-                Incidents
-            </a>
+            <a onclick="navigate('dashboard')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">Dashboard</a>
+            <a onclick="navigate('sites')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">Site Management</a>
+            <a onclick="navigate('observations')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">Observations</a>
+            <a onclick="navigate('ncrs')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">NCR & RCA</a>
 
             <!-- AI Assistant -->
-            <div class="p-6 mt-8 bg-gradient-to-br from-blue-600 to-purple-700 text-white rounded-t-2xl">
-                <h3 class="font-bold flex items-center">
-                    <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 12l2-2 4 4m-6-7l3 3 3-3"></path></svg>
-                    AI Assistant
-                </h3>
-                <p class="text-sm mt-2 opacity-90">Get RCA & CAPA suggestions instantly</p>
-                <textarea id="ai-prompt" class="w-full mt-3 p-3 text-sm rounded-lg text-gray-900" rows="3" placeholder="Describe the issue..."></textarea>
-                <button id="ai-btn" class="w-full mt-2 bg-white text-blue-600 font-bold py-2 rounded-lg hover:bg-gray-100">Get Suggestion</button>
-                <div id="ai-loading" class="hidden mt-2 text-center">Thinking...</div>
-                <div id="ai-response" class="hidden mt-3 p-4 bg-white/20 rounded-lg text-sm whitespace-pre-wrap"></div>
+            <div class="p-6 mt-10 bg-gradient-to-br from-indigo-600 to-purple-700 text-white">
+                <h3 class="font-bold text-lg">AI Assistant (Gemini)</h3>
+                <p class="text-sm opacity-90 mt-1">Get instant RCA & CAPA suggestions</p>
+                <textarea id="ai-prompt" class="w-full mt-3 p-3 rounded-lg text-gray-900 text-sm" rows="3" placeholder="e.g. Micro-cracks on modules at Site-05"></textarea>
+                <button id="ai-btn" class="w-full mt-3 bg-white text-indigo-700 font-bold py-3 rounded-lg hover:bg-gray-100">Get AI Suggestion</button>
+                <div id="ai-loading" class="hidden mt-3 text-center">Thinking...</div>
+                <pre id="ai-response" class="hidden mt-4 p-4 bg-white/20 rounded-lg text-sm whitespace-pre-wrap"></pre>
             </div>
         </nav>
     </aside>
 
-    <!-- Main Content -->
+    <!-- Main -->
     <div class="flex-1 overflow-y-auto">
-        <header class="bg-white shadow-sm p-6 flex justify-between items-center">
+        <header class="bg-white shadow p-6 flex justify-between items-center">
             <h1 id="page-title" class="text-3xl font-bold text-gray-800">Dashboard</h1>
             <div class="flex items-center gap-4">
                 <select id="site-filter" class="px-4 py-2 border rounded-lg">
@@ -96,16 +75,14 @@
             <!-- Dashboard -->
             <div id="page-dashboard" class="page-content">
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-sm text-gray-500">Total Observations</h3><p class="text-3xl font-bold text-blue-600" id="total-obs">0</p></div>
-                    <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-sm text-gray-500">Open NCRs</h3><p class="text-3xl font-bold text-red-600" id="open-ncrs">0</p></div>
-                    <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-sm text-gray-500">Pending RCA</h3><p class="text-3xl font-bold text-yellow-600" id="pending-rca">0</p></div>
-                    <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-sm text-gray-500">Incidents (30D)</h3><p class="text-3xl font-bold text-red-700" id="incidents-30d">0</p></div>
-                    <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-sm text-gray-500">Quality Index</h3><p class="text-3xl font-bold text-green-600" id="quality-index">100%</p></div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-lg shadow"><canvas id="ncrChart"></canvas></div>
-                    <div class="bg-white p-6 rounded-lg shadow"><canvas id="siteChart"></canvas></div>
+                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                        <p class="text-gray-500 text-sm">Total Observations</p>
+                        <p id="total-obs" class="text-4xl font-bold text-blue-600">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                        <p class="text-gray-500 text-sm">Open NCRs</p>
+                        <p id="open-ncrs" class="text-4xl font-bold text-red-600">0</p>
+                    </div>
                 </div>
             </div>
 
@@ -113,31 +90,44 @@
             <div id="page-sites" class="hidden page-content">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-3xl font-bold">Site Management</h2>
-                    <button onclick="openSiteModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add New Site</button>
+                    <button onclick="openModal('site-modal')" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Site</button>
                 </div>
-                <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="bg-white rounded-lg shadow overflow-x-auto">
                     <table class="min-w-full">
-                        <thead class="bg-gray-50"><tr><th class="px-6 py-4 text-left">Site ID</th><th>Name</th><th>Location</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="sites-table"></tbody>
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-sm font-medium text-gray-700">Site Name</th>
+                                <th class="px-6 py-4 text-left">Location</th>
+                                <th class="px-6 py-4 text-left">Capacity</th>
+                                <th class="px-6 py-4 text-left">Status</th>
+                                <th class="px-6 py-4 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sites-tbody"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Other pages (simplified for brevity but fully functional) -->
+            <!-- Observations Page -->
             <div id="page-observations" class="hidden page-content">
-                <div class="flex justify-between mb-6">
-                    <h2 class="text-3xl font-bold">Observations</h2>
-                    <button onclick="openObsModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg">+ Log Observation</button>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">Quality Observations</h2>
+                    <button onclick="openModal('obs-modal')" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">+ Log Observation</button>
                 </div>
-                <div class="bg-white rounded-lg shadow"><table class="min-w-full"><tbody id="obs-table"></tbody></table></div>
-            </div>
-
-            <div id="page-ncrs" class="hidden page-content">
-                <div class="flex justify-between mb-6">
-                    <h2 class="text-3xl font-bold">NCR & RCA</h2>
-                    <button onclick="openNcrModal()" class="px-6 py-3 bg-red-600 text-white rounded-lg">+ Raise NCR</button>
+                <div class="bg-white rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left">Site</th>
+                                <th class="px-6 py-4 text-left">Title</th>
+                                <th class="px-6 py-4 text-left">Severity</th>
+                                <th class="px-6 py-4 text-left">Date</th>
+                                <th class="px-6 py-4 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="obs-tbody"></tbody>
+                    </table>
                 </div>
-                <div class="bg-white rounded-lg shadow"><table class="min-w-full"><tbody id="ncr-table"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -148,64 +138,67 @@
     <div class="bg-white p-8 rounded-xl w-full max-w-md">
         <h2 class="text-2xl font-bold mb-6">Add New Site</h2>
         <form id="site-form">
-            <input type="text" id="site-name" placeholder="Site Name" class="w-full p-3 border rounded-lg mb-4" required>
-            <input type="text" id="site-location" placeholder="Location" class="w-full p-3 border rounded-lg mb-4" required>
-            <input type="number" id="site-capacity" placeholder="Capacity (MW)" class="w-full p-3 border rounded-lg mb-4" required>
-            <select id="site-status" class="w-full p-3 border rounded-lg mb-6">
-                <option>Active</option><option>Under Construction</option><option>Closed</option>
+            <input type="text" id="site-name" placeholder="Site Name" class="w-full p-3 border rounded mb-4" required>
+            <input type="text" id="site-location" placeholder="Location" class="w-full p-3 border rounded mb-4" required>
+            <input type="number" id="site-capacity" placeholder="Capacity (MW)" class="w-full p-3 border rounded mb-4" required>
+            <select id="site-status" class="w-full p-3 border rounded mb-6">
+                <option>Active</option>
+                <option>Under Construction</option>
             </select>
             <div class="flex gap-4">
-                <button type="submit" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">Save Site</button>
-                <button type="button" onclick="closeModal('site-modal')" class="flex-1 bg-gray-300 py-3 rounded-lg">Cancel</button>
+                <button type="submit" class="flex-1 bg-blue-600 text-white py-3 rounded">Save Site</button>
+                <button type="button" onclick="closeModal('site-modal')" class="flex-1 bg-gray-300 py-3 rounded">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Observation Modal (similar structure) -->
 <div id="obs-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white p-8 rounded-xl w-full max-w-lg">
-        <h2 class="text-2xl font-bold mb-6">Log Observation</h2>
+        <h2 class="text-2xl font-bold mb-6">Log New Observation</h2>
         <form id="obs-form">
-            <select id="obs-site" class="w-full p-3 border rounded-lg mb-4"></select>
-            <input type="text" id="obs-title" placeholder="Observation Title" class="w-full p-3 border rounded-lg mb-4" required>
-            <textarea id="obs-desc" placeholder="Description" class="w-full p-3 border rounded-lg mb-4" rows="4"></textarea>
-            <select id="obs-severity" class="w-full p-3 border rounded-lg mb-6">
-                <option>Minor</option><option>Major</option><option>Critical</option>
+            <select id="obs-site" class="w-full p-3 border rounded mb-4" required>
+                <option value="">Select Site</option>
+            </select>
+            <input type="text" id="obs-title" placeholder="Observation Title" class="w-full p-3 border rounded mb-4" required>
+            <textarea id="obs-desc" placeholder="Description" class="w-full p-3 border rounded mb-4" rows="4"></textarea>
+            <select id="obs-severity" class="w-full p-3 border rounded mb-6">
+                <option>Minor</option>
+                <option>Major</option>
+                <option>Critical</option>
             </select>
             <div class="flex gap-4">
-                <button type="submit" class="flex-1 bg-blue-600 text-white py-3 rounded-lg">Save</button>
-                <button type="button" onclick="closeModal('obs-modal')" class="flex-1 bg-gray-300 py-3 rounded-lg">Cancel</button>
+                <button type="submit" class="flex-1 bg-green-600 text-white py-3 rounded">Save Observation</button>
+                <button type="button" onclick="closeModal('obs-modal')" class="flex-1 bg-gray-300 py-3 rounded">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- FULLY WORKING SCRIPT -->
+<!-- FINAL WORKING SCRIPT -->
 <script type="module">
-    const { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy } = window.firebase;
+    import { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     const db = window.db;
 
-    let sites = [], observations = [], ncrs = [];
-
-    // Gemini AI
-    const GEMINI_KEY = "AIzaSyBFQHzmHAA6fXHbi_9_Z0xpniMnoeeGz4s";
-    const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+    let sites = [];
+    let observations = [];
 
     // Navigation
     window.navigate = (page) => {
         document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
-        document.getElementById(`page-${page}`).classList.remove('hidden');
+        const pageEl = document.getElementById('page-' + page);
+        if (pageEl) pageEl.classList.remove('hidden');
         document.getElementById('page-title').textContent = page.charAt(0).toUpperCase() + page.slice(1);
         document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
-        document.querySelector(`a[href="#${page}"]`).classList.add('active');
+        document.querySelector(`a[onclick="navigate('${page}')"]`)?.classList.add('active');
     };
 
-    // Modal Controls
-    window.openSiteModal = () => { document.getElementById('site-modal').classList.remove('hidden'); document.getElementById('site-form').reset(); };
-    window.openObsModal = () => { document.getElementById('obs-modal').classList.remove('hidden'); document.getElementById('obs-form').reset(); };
-    window.openNcrModal = () => { /* similar */ };
-    window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+    // Modal Functions
+    window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
+    window.closeModal = (id) => {
+        document.getElementById(id).classList.add('hidden');
+        document.getElementById(id).querySelector('form')?.reset();
+    };
 
     // Save Site
     document.getElementById('site-form').onsubmit = async (e) => {
@@ -213,7 +206,7 @@
         const data = {
             name: document.getElementById('site-name').value,
             location: document.getElementById('site-location').value,
-            capacity: document.getElementById('site-capacity').value,
+            capacity: parseFloat(document.getElementById('site-capacity').value),
             status: document.getElementById('site-status').value,
             createdAt: serverTimestamp()
         };
@@ -224,68 +217,80 @@
     // Save Observation
     document.getElementById('obs-form').onsubmit = async (e) => {
         e.preventDefault();
-        await addDoc(collection(db, 'observations'), {
+        const data = {
             site: document.getElementById('obs-site').value,
             title: document.getElementById('obs-title').value,
             desc: document.getElementById('obs-desc').value,
             severity: document.getElementById('obs-severity').value,
             createdAt: serverTimestamp()
-        });
+        };
+        await addDoc(collection(db, 'observations'), data);
         closeModal('obs-modal');
     };
 
     // Render Sites
     const renderSites = () => {
-        const tbody = document.getElementById('sites-table');
+        const tbody = document.getElementById('sites-tbody');
         tbody.innerHTML = sites.map(s => `
-            <tr class="border-b">
-                <td class="px-6 py-4">${s.id.slice(0,8)}</td>
+            <tr class="border-b hover:bg-gray-50">
                 <td class="px-6 py-4 font-medium">${s.name}</td>
                 <td class="px-6 py-4">${s.location}</td>
                 <td class="px-6 py-4">${s.capacity} MW</td>
-                <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs ${s.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}">${s.status}</span></td>
-                <td class="px-6 py-4"><button onclick="deleteSite('${s.id}')" class="text-red-600 hover:underline">Delete</button></td>
+                <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">${s.status}</span></td>
+                <td class="="px-6 py-4"><button onclick="deleteSite('${s.id}')" class="text-red-600 hover:underline">Delete</button></td>
             </tr>
         `).join('');
+
         // Update dropdowns
         const select = document.getElementById('obs-site');
-        select.innerHTML = sites.map(s => `<option>${s.name}</option>`).join('');
+        select.innerHTML = '<option value="">Select Site</option>' + sites.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
         document.getElementById('site-filter').innerHTML = '<option value="all">All Sites</option>' + sites.map(s => `<option>${s.name}</option>`).join('');
     };
 
-    window.deleteSite = async (id) => {
-        if (confirm('Delete this site?')) {
-            await deleteDoc(doc(db, 'sites', id));
-        }
+    // Render Observations
+    const renderObservations = () => {
+        const tbody = document.getElementById('obs-tbody');
+        tbody.innerHTML = observations.map(o => `
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-6 py-4">${o.site}</td>
+                <td class="px-6 py-4 font-medium">${o.title}</td>
+                <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs ${o.severity === 'Critical' ? 'bg-red-100 text-red-800' : o.severity === 'Major' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100'}">${o.severity}</span></td>
+                <td class="px-6 py-4">${new Date(o.createdAt?.toDate()).toLocaleDateString()}</td>
+                <td class="px-6 py-4"><button onclick="deleteObs('${o.id}')" class="text-red-600 hover:underline">Delete</button></td>
+            </tr>
+        `).join('');
+        document.getElementById('total-obs').textContent = observations.length;
     };
 
-    // Real-time Listeners
-    onSnapshot(collection(db, 'sites'), snap => {
+    window.deleteSite = async (id) => { if (confirm('Delete site?')) await deleteDoc(doc(db, 'sites', id)); };
+    window.deleteObs = async (id) => { if (confirm('Delete observation?')) await deleteDoc(doc(db, 'observations', id)); };
+
+    // Real-time Listeners (FIXED!)
+    onSnapshot(collection(db, 'sites'), (snap) => {
         sites = [];
-        snap.forEach(doc => sites.push({id: doc.id, ...doc.data()}));
+        snap.forEach(doc => sites.push({ id: doc.id, ...doc.data() }));
         renderSites();
     });
 
-    onSnapshot(collection(db, 'observations'), snap => {
+    onSnapshot(collection(db, 'observations'), (snap) => {
         observations = [];
-        snap.forEach(doc => observations.push({id: doc.id, ...doc.data()}));
-        document.getElementById('total-obs').textContent = observations.length;
+        snap.forEach(doc => observations.push({ id: doc.id, ...doc.data() }));
+        renderObservations();
     });
 
-    // AI Assistant
+    // AI Assistant (Gemini)
     document.getElementById('ai-btn').onclick = async () => {
         const prompt = document.getElementById('ai-prompt').value.trim();
         if (!prompt) return;
-
         document.getElementById('ai-loading').classList.remove('hidden');
         document.getElementById('ai-response').classList.add('hidden');
 
         try {
-            const res = await fetch(`${GEMINI_URL}?key=${GEMINI_KEY}`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBFQHzmHAA6fXHbi_9_Z0xpniMnoeeGz4s`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ role: "user", parts: [{ text: `You are a solar quality expert. Suggest root causes and preventive actions for: ${prompt}` }] }]
+                    contents: [{ role: "user", parts: [{ text: `You are a solar quality expert. Analyze: "${prompt}"\n\nSuggest:\n1. Possible Root Causes\n2. Corrective Actions\n3. Preventive Actions` }] }]
                 })
             });
             const data = await res.json();
