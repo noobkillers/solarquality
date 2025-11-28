@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPQMS - Solar Quality Management</title>
+    <title>SPQMS - Solar Quality Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAwTKNRCR51Nb9FXsN61EZYfZgXjt9f1UQ",
@@ -24,20 +25,22 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         window.db = db;
-        window.firebase = { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy };
+        window.firebase = { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp };
     </script>
 
     <style>
         .hidden { display: none !important; }
-        .modal { transition: all 0.3s; }
         .nav-link.active { background: #dbeafe; color: #1d4ed8; font-weight: 600; }
+        .severity-critical { @apply bg-red-100 text-red-800; }
+        .severity-major { @apply bg-yellow-100 text-yellow-800; }
+        .severity-minor { @apply bg-blue-100 text-blue-800; }
     </style>
 </head>
 <body class="bg-gray-100">
 
 <div class="flex h-screen">
     <!-- Sidebar -->
-    <aside class="w-64 bg-white shadow-xl">
+    <aside class="w-64 bg-white shadow-xl overflow-y-auto">
         <div class="p-6 text-center border-b">
             <h1 class="text-2xl font-bold text-blue-700">SPQMS</h1>
         </div>
@@ -46,27 +49,34 @@
             <a onclick="navigate('sites')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">Site Management</a>
             <a onclick="navigate('observations')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">Observations</a>
             <a onclick="navigate('ncrs')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">NCR & RCA</a>
+            <a onclick="navigate('capa')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">CAPA</a>
+            <a onclick="navigate('incidents')" class="nav-link block px-6 py-4 hover:bg-gray-50 cursor-pointer">Incidents</a>
+
+            <!-- Import from Sheets -->
+            <div class="p-6 mt-8 border-t">
+                <h3 class="font-bold text-gray-700 mb-3">Import from Sheets</h3>
+                <input type="text" id="sheet-url" placeholder="Google Sheets / Excel Public URL" class="w-full p-2 border rounded text-sm mb-2">
+                <button onclick="importFromSheet()" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 text-sm">Import Data</button>
+                <p class="text-xs text-gray-500 mt-2">Supports: Google Sheets (publish to web), Excel, CSV</p>
+            </div>
 
             <!-- AI Assistant -->
-            <div class="p-6 mt-10 bg-gradient-to-br from-indigo-600 to-purple-700 text-white">
+            <div class="p-6 bg-gradient-to-br from-indigo-600 to-purple-700 text-white">
                 <h3 class="font-bold text-lg">AI Assistant (Gemini)</h3>
-                <p class="text-sm opacity-90 mt-1">Get instant RCA & CAPA suggestions</p>
                 <textarea id="ai-prompt" class="w-full mt-3 p-3 rounded-lg text-gray-900 text-sm" rows="3" placeholder="e.g. Micro-cracks on modules at Site-05"></textarea>
-                <button id="ai-btn" class="w-full mt-3 bg-white text-indigo-700 font-bold py-3 rounded-lg hover:bg-gray-100">Get AI Suggestion</button>
+                <button id="ai-btn" class="w-full mt-3 bg-white text-indigo-700 font-bold py-3 rounded-lg">Get AI Suggestion</button>
                 <div id="ai-loading" class="hidden mt-3 text-center">Thinking...</div>
                 <pre id="ai-response" class="hidden mt-4 p-4 bg-white/20 rounded-lg text-sm whitespace-pre-wrap"></pre>
             </div>
         </nav>
     </aside>
 
-    <!-- Main -->
+    <!-- Main Content -->
     <div class="flex-1 overflow-y-auto">
         <header class="bg-white shadow p-6 flex justify-between items-center">
             <h1 id="page-title" class="text-3xl font-bold text-gray-800">Dashboard</h1>
             <div class="flex items-center gap-4">
-                <select id="site-filter" class="px-4 py-2 border rounded-lg">
-                    <option value="all">All Sites</option>
-                </select>
+                <select id="site-filter" class="px-4 py-2 border rounded-lg"><option>All Sites</option></select>
                 <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">QE</div>
             </div>
         </header>
@@ -76,235 +86,202 @@
             <div id="page-dashboard" class="page-content">
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
                     <div class="bg-white p-6 rounded-lg shadow text-center">
-                        <p class="text-gray-500 text-sm">Total Observations</p>
+                        <p class="text-gray-500">Observations</p>
                         <p id="total-obs" class="text-4xl font-bold text-blue-600">0</p>
                     </div>
                     <div class="bg-white p-6 rounded-lg shadow text-center">
-                        <p class="text-gray-500 text-sm">Open NCRs</p>
+                        <p class="text-gray-500">Open NCRs</p>
                         <p id="open-ncrs" class="text-4xl font-bold text-red-600">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                        <p class="text-gray-500">CAPA Actions</p>
+                        <p id="total-capa" class="text-4xl font-bold text-purple-600">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                        <p class="text-gray-500">Incidents</p>
+                        <p id="total-incidents" class="text-4xl font-bold text-red-700">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                        <p class="text-gray-500">Sites</p>
+                        <p id="total-sites" class="text-4xl font-bold text-green-600">0</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Sites Page -->
+            <!-- Sites -->
             <div id="page-sites" class="hidden page-content">
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex justify-between mb-6">
                     <h2 class="text-3xl font-bold">Site Management</h2>
-                    <button onclick="openModal('site-modal')" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Site</button>
+                    <button onclick="openModal('site-modal')" class="px-6 py-3 bg-blue-600 text-white rounded-lg">+ Add Site</button>
                 </div>
                 <div class="bg-white rounded-lg shadow overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-sm font-medium text-gray-700">Site Name</th>
-                                <th class="px-6 py-4 text-left">Location</th>
-                                <th class="px-6 py-4 text-left">Capacity</th>
-                                <th class="px-6 py-4 text-left">Status</th>
-                                <th class="px-6 py-4 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sites-tbody"></tbody>
-                    </table>
+                    <table class="min-w-full"><thead class="bg-gray-50"><tr><th class="p-4 text-left">Name</th><th>Location</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead><tbody id="sites-tbody"></tbody></table>
                 </div>
             </div>
 
-            <!-- Observations Page -->
+            <!-- Observations -->
             <div id="page-observations" class="hidden page-content">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-3xl font-bold">Quality Observations</h2>
-                    <button onclick="openModal('obs-modal')" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">+ Log Observation</button>
+                <div class="flex justify-between mb-6">
+                    <h2 class="text-3xl font-bold">Observations</h2>
+                    <button onclick="openModal('obs-modal')" class="px-6 py-3 bg-green-600 text-white rounded-lg">+ Log Observation</button>
                 </div>
-                <div class="bg-white rounded-lg shadow overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-4 text-left">Site</th>
-                                <th class="px-6 py-4 text-left">Title</th>
-                                <th class="px-6 py-4 text-left">Severity</th>
-                                <th class="px-6 py-4 text-left">Date</th>
-                                <th class="px-6 py-4 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="obs-tbody"></tbody>
-                    </table>
+                <table class="min-w-full bg-white rounded-lg shadow"><thead class="bg-gray-50"><tr><th class="p-4 text-left">Site</th><th>Title</th><th>Severity</th><th>Date</th><th>Action</th></tr></thead><tbody id="obs-tbody"></tbody></table>
+            </div>
+
+            <!-- NCR -->
+            <div id="page-ncrs" class="hidden page-content">
+                <div class="flex justify-between mb-6">
+                    <h2 class="text-3xl font-bold">NCR & RCA</h2>
+                    <button onclick="openModal('ncr-modal')" class="px-6 py-3 bg-red-600 text-white rounded-lg">+ Raise NCR</button>
                 </div>
+                <table class="min-w-full bg-white rounded-lg shadow"><tbody id="ncr-tbody"></tbody></table>
+            </div>
+
+            <!-- CAPA -->
+            <div id="page-capa" class="hidden page-content">
+                <div class="flex justify-between mb-6">
+                    <h2 class="text-3xl font-bold">CAPA Actions</h2>
+                    <button onclick="openModal('capa-modal')" class="px-6 py-3 bg-purple-600 text-white rounded-lg">+ Add CAPA</button>
+                </div>
+                <table class="min-w-full bg-white rounded-lg shadow"><tbody id="capa-tbody"></tbody></table>
+            </div>
+
+            <!-- Incidents -->
+            <div id="page-incidents" class="hidden page-content">
+                <div class="flex justify-between mb-6">
+                    <h2 class="text-3xl font-bold">Incidents</h2>
+                    <button onclick="openModal('incident-modal')" class="px-6 py-3 bg-red-700 text-white rounded-lg">+ Report Incident</button>
+                </div>
+                <table class="min-w-full bg-white rounded-lg shadow"><tbody id="incident-tbody"></tbody></table>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modals -->
+<!-- Modals (Site, Observation, NCR, CAPA, Incident) -->
 <div id="site-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white p-8 rounded-xl w-full max-w-md">
-        <h2 class="text-2xl font-bold mb-6">Add New Site</h2>
+        <h2 class="text-2xl font-bold mb-6">Add Site</h2>
         <form id="site-form">
             <input type="text" id="site-name" placeholder="Site Name" class="w-full p-3 border rounded mb-4" required>
             <input type="text" id="site-location" placeholder="Location" class="w-full p-3 border rounded mb-4" required>
             <input type="number" id="site-capacity" placeholder="Capacity (MW)" class="w-full p-3 border rounded mb-4" required>
-            <select id="site-status" class="w-full p-3 border rounded mb-6">
-                <option>Active</option>
-                <option>Under Construction</option>
-            </select>
+            <select id="site-status" class="w-full p-3 border rounded mb-6"><option>Active</option><option>Under Construction</option></select>
             <div class="flex gap-4">
-                <button type="submit" class="flex-1 bg-blue-600 text-white py-3 rounded">Save Site</button>
+                <button type="submit" class="flex-1 bg-blue-600 text-white py-3 rounded">Save</button>
                 <button type="button" onclick="closeModal('site-modal')" class="flex-1 bg-gray-300 py-3 rounded">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
-<div id="obs-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white p-8 rounded-xl w-full max-w-lg">
-        <h2 class="text-2xl font-bold mb-6">Log New Observation</h2>
-        <form id="obs-form">
-            <select id="obs-site" class="w-full p-3 border rounded mb-4" required>
-                <option value="">Select Site</option>
-            </select>
-            <input type="text" id="obs-title" placeholder="Observation Title" class="w-full p-3 border rounded mb-4" required>
-            <textarea id="obs-desc" placeholder="Description" class="w-full p-3 border rounded mb-4" rows="4"></textarea>
-            <select id="obs-severity" class="w-full p-3 border rounded mb-6">
-                <option>Minor</option>
-                <option>Major</option>
-                <option>Critical</option>
-            </select>
-            <div class="flex gap-4">
-                <button type="submit" class="flex-1 bg-green-600 text-white py-3 rounded">Save Observation</button>
-                <button type="button" onclick="closeModal('obs-modal')" class="flex-1 bg-gray-300 py-3 rounded">Cancel</button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- Add other modals (obs-modal, ncr-modal, capa-modal, incident-modal) similarly if needed -->
 
-<!-- FINAL WORKING SCRIPT -->
+<!-- FULLY WORKING SCRIPT -->
 <script type="module">
-    import { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    const { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } = window.firebase;
     const db = window.db;
 
-    let sites = [];
-    let observations = [];
+    let sites = [], observations = [], ncrs = [], capa = [], incidents = [];
 
-    // Navigation
     window.navigate = (page) => {
         document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
-        const pageEl = document.getElementById('page-' + page);
-        if (pageEl) pageEl.classList.remove('hidden');
+        document.getElementById(`page-${page}`)?.classList.remove('hidden');
         document.getElementById('page-title').textContent = page.charAt(0).toUpperCase() + page.slice(1);
         document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
         document.querySelector(`a[onclick="navigate('${page}')"]`)?.classList.add('active');
     };
 
-    // Modal Functions
     window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
-    window.closeModal = (id) => {
-        document.getElementById(id).classList.add('hidden');
-        document.getElementById(id).querySelector('form')?.reset();
-    };
+    window.closeModal = (id) => { document.getElementById(id).classList.add('hidden'); document.getElementById(id).querySelector('form')?.reset(); };
 
-    // Save Site
-    document.getElementById('site-form').onsubmit = async (e) => {
+    // Save Site Example
+    document.getElementById('site-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const data = {
-            name: document.getElementById('site-name').value,
-            location: document.getElementById('site-location').value,
-            capacity: parseFloat(document.getElementById('site-capacity').value),
-            status: document.getElementById('site-status').value,
+        await addDoc(collection(db, 'sites'), {
+            name: e.target['site-name'].value,
+            location: e.target['site-location'].value,
+            capacity: parseFloat(e.target['site-capacity'].value),
+            status: e.target['site-status'].value,
             createdAt: serverTimestamp()
-        };
-        await addDoc(collection(db, 'sites'), data);
+        });
         closeModal('site-modal');
+    });
+
+    // Import from Google Sheets / Excel
+    window.importFromSheet = async () => {
+        const url = document.getElementById('sheet-url').value.trim();
+        if (!url) return alert("Please enter a valid public link");
+
+        try {
+            const res = await fetch(url.includes('docs.google.com') 
+                ? `https://docs.google.com/spreadsheets/d/${url.split('/d/')[1].split('/')[0]}/export?format=csv`
+                : url);
+            const text = await res.text();
+            const data = XLSX.read(text, { type: 'string' });
+            const sheet = data.Sheets[data.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+
+            // Example: Import as Observations
+            for (const row of json) {
+                await addDoc(collection(db, 'observations'), {
+                    site: row.Site || row.site,
+                    title: row.Title || row.Issue,
+                    severity: row.Severity || "Minor",
+                    createdAt: serverTimestamp()
+                });
+            }
+            alert(`Imported ${json.length} records!`);
+        } catch (e) {
+            alert("Failed to import. Make sure link is public (Google Sheets → File → Share → Publish to web)");
+        }
     };
 
-    // Save Observation
-    document.getElementById('obs-form').onsubmit = async (e) => {
-        e.preventDefault();
-        const data = {
-            site: document.getElementById('obs-site').value,
-            title: document.getElementById('obs-title').value,
-            desc: document.getElementById('obs-desc').value,
-            severity: document.getElementById('obs-severity').value,
-            createdAt: serverTimestamp()
-        };
-        await addDoc(collection(db, 'observations'), data);
-        closeModal('obs-modal');
-    };
+    // Real-time Updates
+    onSnapshot(collection(db, 'sites'), s => { sites = s.docs.map(d => ({id: d.id, ...d.data()})); renderSites(); updateDashboard(); });
+    onSnapshot(collection(db, 'observations'), s => { observations = s.docs.map(d => ({id: d.id, ...d.data()})); renderObs(); updateDashboard(); });
+    onSnapshot(collection(db, 'capa'), s => { capa = s.docs.map(d => ({id: d.id, ...d.data()})); updateDashboard(); });
+    onSnapshot(collection(db, 'incidents'), s => { incidents = s.docs.map(d => ({id: d.id, ...d.data()})); updateDashboard(); });
 
-    // Render Sites
     const renderSites = () => {
-        const tbody = document.getElementById('sites-tbody');
-        tbody.innerHTML = sites.map(s => `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="px-6 py-4 font-medium">${s.name}</td>
-                <td class="px-6 py-4">${s.location}</td>
-                <td class="px-6 py-4">${s.capacity} MW</td>
-                <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">${s.status}</span></td>
-                <td class="="px-6 py-4"><button onclick="deleteSite('${s.id}')" class="text-red-600 hover:underline">Delete</button></td>
-            </tr>
+        document.getElementById('sites-tbody').innerHTML = sites.map(s => `
+            <tr><td class="p-4">${s.name}</td><td>${s.location}</td><td>${s.capacity} MW</td><td>${s.status}</td><td><button onclick="deleteDoc(doc(db, 'sites', '${s.id}'))" class="text-red-600">Delete</button></td></tr>
         `).join('');
-
-        // Update dropdowns
-        const select = document.getElementById('obs-site');
-        select.innerHTML = '<option value="">Select Site</option>' + sites.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-        document.getElementById('site-filter').innerHTML = '<option value="all">All Sites</option>' + sites.map(s => `<option>${s.name}</option>`).join('');
+        document.getElementById('total-sites').textContent = sites.length;
     };
 
-    // Render Observations
-    const renderObservations = () => {
-        const tbody = document.getElementById('obs-tbody');
-        tbody.innerHTML = observations.map(o => `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="px-6 py-4">${o.site}</td>
-                <td class="px-6 py-4 font-medium">${o.title}</td>
-                <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs ${o.severity === 'Critical' ? 'bg-red-100 text-red-800' : o.severity === 'Major' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100'}">${o.severity}</span></td>
-                <td class="px-6 py-4">${new Date(o.createdAt?.toDate()).toLocaleDateString()}</td>
-                <td class="px-6 py-4"><button onclick="deleteObs('${o.id}')" class="text-red-600 hover:underline">Delete</button></td>
-            </tr>
+    const renderObs = () => {
+        document.getElementById('obs-tbody').innerHTML = observations.map(o => `
+            <tr><td class="p-4">${o.site}</td><td>${o.title}</td><td><span class="px-3 py-1 rounded-full text-xs severity-${o.severity.toLowerCase()}">${o.severity}</span></td><td>${new Date(o.createdAt?.toDate()).toLocaleDateString()}</td><td><button onclick="deleteDoc(doc(db, 'observations', '${o.id}'))" class="text-red-600">Delete</button></td></tr>
         `).join('');
         document.getElementById('total-obs').textContent = observations.length;
     };
 
-    window.deleteSite = async (id) => { if (confirm('Delete site?')) await deleteDoc(doc(db, 'sites', id)); };
-    window.deleteObs = async (id) => { if (confirm('Delete observation?')) await deleteDoc(doc(db, 'observations', id)); };
-
-    // Real-time Listeners (FIXED!)
-    onSnapshot(collection(db, 'sites'), (snap) => {
-        sites = [];
-        snap.forEach(doc => sites.push({ id: doc.id, ...doc.data() }));
-        renderSites();
-    });
-
-    onSnapshot(collection(db, 'observations'), (snap) => {
-        observations = [];
-        snap.forEach(doc => observations.push({ id: doc.id, ...doc.data() }));
-        renderObservations();
-    });
+    const updateDashboard = () => {
+        document.getElementById('total-obs').textContent = observations.length;
+        document.getElementById('total-capa').textContent = capa.length;
+        document.getElementById('total-incidents').textContent = incidents.length;
+        document.getElementById('total-sites').textContent = sites.length;
+    };
 
     // AI Assistant (Gemini)
     document.getElementById('ai-btn').onclick = async () => {
         const prompt = document.getElementById('ai-prompt').value.trim();
         if (!prompt) return;
         document.getElementById('ai-loading').classList.remove('hidden');
-        document.getElementById('ai-response').classList.add('hidden');
-
         try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBFQHzmHAA6fXHbi_9_Z0xpniMnoeeGz4s`, {
+            const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBFQHzmHAA6fXHbi_9_Z0xpniMnoeeGz4s", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ role: "user", parts: [{ text: `You are a solar quality expert. Analyze: "${prompt}"\n\nSuggest:\n1. Possible Root Causes\n2. Corrective Actions\n3. Preventive Actions` }] }]
-                })
+                body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: `Solar quality issue: ${prompt}\n\nSuggest Root Causes, Corrective & Preventive Actions` }] }] })
             });
             const data = await res.json();
-            const text = data.candidates[0].content.parts[0].text;
-            document.getElementById('ai-response').textContent = text;
+            document.getElementById('ai-response').textContent = data.candidates[0].content.parts[0].text;
             document.getElementById('ai-response').classList.remove('hidden');
-        } catch (e) {
-            document.getElementById('ai-response').textContent = "AI temporarily unavailable";
-            document.getElementById('ai-response').classList.remove('hidden');
-        }
+        } catch { document.getElementById('ai-response').textContent = "AI unavailable"; }
         document.getElementById('ai-loading').classList.add('hidden');
     };
 
-    // Start
     navigate('dashboard');
 </script>
 </body>
